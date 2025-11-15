@@ -1,5 +1,8 @@
 # ScreepsExtended Agents Guide
 
+## Maintain this file
+- When you add, remove, or significantly change files under src/ or hooks/, you MUST update /AGENTS.md (Key Files & Directories and any relevant sections).
+
 ## Overview
 - **ScreepsExtended** is a browser-based overlay and lightweight visualization toolkit for the Screeps MMO, implemented as a Chrome extension.
 - Main tech stack: JavaScript (ES6), DOM APIs, Canvas 2D, browser/Chrome extension APIs.
@@ -77,6 +80,7 @@
 - `src/utils/*` ? small helpers such as badge image cache and common helpers.
 - `src/renderers/*` ? renderer modules for specific visual entities: `terrain.js`, `points.js`, `roads.js`, `walls.js`, `creeps.js`, `controllers.js`, `sources.js`, `powerbanks.js`, `minerals.js`, `npcs.js`.
 - `hooks/*` ? scripts injected into the page to capture game data (room map and user directory hooks).
+- `hooks/hook-roomview.js` ? monitors Angular room view broadcasts (zoom/resize) and posts `screeps-hook:room-view` messages so the overlay can re-render when the camera changes.
 
 ## Maintenance of This Guide
 - `/AGENTS.md` is the primary guide for integrating code and contributing to this repository. Keep it up to date when major structure or workflow changes occur.
@@ -84,8 +88,8 @@
 - For every architectural or API change, update the corresponding parts of this doc to help future agents and developers.
 
 ## Hooks & Communication ?
-- The injected `hooks` scripts gather data (WebSocket roomMap messages, Angular state) and use `window.postMessage` to send structured data back to the page. The content scripts listen for `window.message` to capture these events.
-- The main hook message sources are `screeps-roommap` and `screeps-hook:user-directory`. The radar store listens for roomMap payloads and updates `SMO.roomRadarData`.
+- The injected `hooks` scripts gather data (WebSocket roomMap messages, Angular state) and use `window.postMessage` (via `SMOHookUtils.postMessage`) to send structured data back to the page. The content scripts listen for `window.message` to capture these events. Each hook waits until `window.SMOHookUtils` exists before bootstrapping to avoid race conditions with Chrome's script loader.
+- The main hook message sources are `screeps-roommap`, `screeps-hook:user-directory`, and `screeps-hook:room-view`. The radar store listens for roomMap payloads and updates `SMO.roomRadarData`, the user cache persists usernames, and the room-view messages drive overlay reflows when the camera zoom changes.
 
 ### Hook message format
 - Hooks post messages using `window.postMessage`. Example payloads to listen for from your hook:
@@ -106,6 +110,15 @@
 			"timestamp": 123456789
 		}
 		```
+	- Room view events:
+		```json
+		{
+			"source": "screeps-hook:room-view",
+			"type": "broadcast-detected",
+			"name": "zoom",
+			"timestamp": 123456789
+		}
+		```
 
 ## Global API & Useful Runtime Objects ??
 - `window.ScreepsMinimalOverlay` (SMO): main state and sub-systems. Notable properties:
@@ -114,8 +127,10 @@
 	- `SMO.terrain` ? terrain cache and retrieval functions.
 	- `SMO.roomRadarData` ? stored room map data keyed by shard and room name.
 	- `SMO.userCache` ? username lookup by id.
-		- `SMO.rooms` ? helper for room name / neighbour calculations (`detectCurrentRoomFromHash`, `computeNeighbourRooms`).
-		- `SMO.badgeImageCache` ? badge image cache map and helper functions (`getBadgeImageEntry`) are reachable via `window.ScreepsBadgeImageCache`.
+	- `SMO.rooms` ? helper for room name / neighbour calculations (`detectCurrentRoomFromHash`, `computeNeighbourRooms`).
+	- `SMO.config` ? runtime flags; `SMO.config.debug` enables verbose logging in content scripts and in-page hooks.
+	- `SMO.setDebug(true|false)` ? toggles the debug flag and forwards the state to `window.SMOHookUtils.setDebug` so hooks mirror the content-script log level.
+	- `SMO.badgeImageCache` ? badge image cache map and helper functions (`getBadgeImageEntry`) are reachable via `window.ScreepsBadgeImageCache`.
 - `window.ScreepsRendererConfig` ? constants and visuals used by renderers.
 - `window.ScreepsRendererUtils` ? common helper functions: `coordKey`, `normalizePointList`, `parseRoomName`, etc.
 

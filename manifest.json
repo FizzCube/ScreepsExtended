@@ -10,7 +10,8 @@
             "resources": [
                 "hooks/hook-utils.js",
                 "hooks/hook-roommap.js",
-                "hooks/hook-user-directory.js"
+                "hooks/hook-user-directory.js",
+                "hooks/hook-roomview.js"
             ],
             "matches": ["https://screeps.com/*"]
         }

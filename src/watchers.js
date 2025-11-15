@@ -30,6 +30,27 @@
             }
         });
 
+        // Listen for page hook messages for room view events (zoom/resize)
+        window.addEventListener("message", (event) => {
+            if (event.source !== window) return;
+            const data = event.data;
+            if (!data || data.source !== 'screeps-hook:room-view') return;
+            try {
+                // console.log('[Screeps Overlay][Watchers] RoomView hook message:', data);
+                if (data.type === 'broadcast-detected' || data.type === 'zoom-invoked' || data.type === 'zoom-change') {
+                    // Ensure overlay and trigger the render
+                    if (SMO.overlay && typeof SMO.overlay.ensureOverlay === 'function') {
+                        SMO.overlay.ensureOverlay();
+                    }
+                    if (typeof SMO.render === 'function') {
+                        SMO.render();
+                    }
+                }
+            } catch (err) {
+                console.warn('[Screeps Overlay][Watchers] Error handling room-view hook message', err);
+            }
+        }, false);
+
         setTimeout(() => {
             SMO.overlay.ensureOverlay();
             if (typeof SMO.render === "function") {

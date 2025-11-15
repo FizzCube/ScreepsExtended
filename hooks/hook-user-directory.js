@@ -2,18 +2,48 @@
     if (window.__screepsUserDirectoryHookInstalled) return;
     window.__screepsUserDirectoryHookInstalled = true;
 
-    const utils = window.SMOHookUtils;
-    if (!utils) {
-        console.warn("[Screeps Overlay][UserDirectory] Hook utilities not found");
-        return;
-    }
-
     const HOOK_SOURCE = "screeps-hook:user-directory";
     const POLL_INTERVAL_MS = 5000;
+
+    let utils = null;
 
     let monitoring = false;
     let pollTimer = null;
     let lastSignature = null;
+
+    function log(...args) {
+        if (utils && typeof utils.log === "function") {
+            utils.log(...args);
+        }
+    }
+
+    function postHookMessage(payload) {
+        if (utils && typeof utils.postMessage === "function") {
+            utils.postMessage(payload);
+        } else {
+            window.postMessage(payload, "*");
+        }
+    }
+
+    function waitForHookUtils(timeoutMs = 15000, intervalMs = 50) {
+        return new Promise((resolve, reject) => {
+            if (window.SMOHookUtils) {
+                return resolve(window.SMOHookUtils);
+            }
+
+            const start = Date.now();
+            const timer = setInterval(() => {
+                if (window.SMOHookUtils) {
+                    clearInterval(timer);
+                    return resolve(window.SMOHookUtils);
+                }
+                if (Date.now() - start >= timeoutMs) {
+                    clearInterval(timer);
+                    return reject(new Error("SMOHookUtils not detected before timeout"));
+                }
+            }, intervalMs);
+        });
+    }
 
     function extractUsers(roomUsers) {
         const result = Object.create(null);
@@ -47,7 +77,7 @@
         if (signature === lastSignature) return;
         lastSignature = signature;
 
-        utils.postMessage({
+        postHookMessage({
             source: HOOK_SOURCE,
             type: "users-update",
             users,
@@ -56,6 +86,7 @@
     }
 
     function scanDirectory() {
+        if (!utils) return;
         const scope = utils.getAngularScopeByClass("page-content");
         if (!scope) return;
 
@@ -82,7 +113,7 @@
     function startMonitoring() {
         if (monitoring) return;
         monitoring = true;
-        utils.log("[UserDirectory] Monitoring started");
+        log("[UserDirectory] Monitoring started");
         scanDirectory();
         scheduleNextPoll();
     }
@@ -93,25 +124,36 @@
             clearTimeout(pollTimer);
             pollTimer = null;
         }
-        utils.log("[UserDirectory] Monitoring stopped");
+        log("[UserDirectory] Monitoring stopped");
     }
 
     function handleNavigationChange() {
-        if (utils.isMapPage()) {
+        if (utils && typeof utils.isMapPage === "function" && utils.isMapPage()) {
             startMonitoring();
         } else {
             stopMonitoring();
         }
     }
 
-    utils.waitForAngular()
-        .then(() => {
-            utils.log("[UserDirectory] Hook ready (Angular detected)");
-            utils.postMessage({ source: HOOK_SOURCE, type: "hook-ready" });
-            window.addEventListener("hashchange", handleNavigationChange);
-            handleNavigationChange();
+    function bootstrap() {
+        utils.waitForAngular()
+            .then(() => {
+                log("[UserDirectory] Hook ready (Angular detected)");
+                postHookMessage({ source: HOOK_SOURCE, type: "hook-ready" });
+                window.addEventListener("hashchange", handleNavigationChange);
+                handleNavigationChange();
+            })
+            .catch((error) => {
+                console.warn("[Screeps Overlay][UserDirectory] Angular wait failed", error);
+            });
+    }
+
+    waitForHookUtils()
+        .then((availableUtils) => {
+            utils = availableUtils;
+            bootstrap();
         })
-        .catch((error) => {
-            console.warn("[Screeps Overlay][UserDirectory] Angular wait failed", error);
+        .catch((err) => {
+            console.warn("[Screeps Overlay][UserDirectory] Hook utilities not found", err);
         });
 })();

@@ -21,7 +21,7 @@
             cacheLastUpdated = parsed.lastUpdated || 0;
             const cacheAge = Date.now() - cacheLastUpdated;
             if (cacheAge > CACHE_EXPIRY_MS) {
-                console.log("[Screeps Overlay] User cache expired, clearing");
+                if (SMO.config && SMO.config.debug) console.log("[Screeps Overlay] User cache expired, clearing");
                 cacheLastUpdated = 0;
                 return Object.create(null);
             }
@@ -45,7 +45,7 @@
                     lastUpdated: cacheLastUpdated
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-                console.log(`[Screeps Overlay] Saved ${Object.keys(userCache).length} users to cache`);
+                if (SMO.config && SMO.config.debug) console.log(`[Screeps Overlay] Saved ${Object.keys(userCache).length} users to cache`);
             } catch (err) {
                 console.warn("[Screeps Overlay] Failed to save user cache:", err);
             }
@@ -88,7 +88,7 @@
         if (!data || data.source !== HOOK_SOURCE) return;
 
         if (data.type === "hook-ready") {
-            console.log("[Screeps Overlay] User directory hook ready");
+            if (SMO.config && SMO.config.debug) console.log("[Screeps Overlay] User directory hook ready");
             return;
         }
 
@@ -97,7 +97,7 @@
         try {
             const updates = mergeUsersFromHook(data.users);
             if (updates > 0) {
-                console.log(`[Screeps Overlay] User cache updated with ${updates} entries from hook`);
+                if (SMO.config && SMO.config.debug) console.log(`[Screeps Overlay] User cache updated with ${updates} entries from hook`);
             }
         } catch (error) {
             console.warn("[Screeps Overlay] Failed to process user update:", error);
@@ -128,7 +128,7 @@
         cacheLastUpdated = 0;
         try {
             localStorage.removeItem(STORAGE_KEY);
-            console.log("[Screeps Overlay] User cache cleared");
+            if (SMO.config && SMO.config.debug) console.log("[Screeps Overlay] User cache cleared");
         } catch (err) {
             console.warn("[Screeps Overlay] Failed to clear user cache:", err);
         }
@@ -142,5 +142,5 @@
         clearCache
     };
 
-    console.log(`[Screeps Overlay] User cache initialized with ${Object.keys(userCache).length} cached users`);
+    if (SMO.config && SMO.config.debug) console.log(`[Screeps Overlay] User cache initialized with ${Object.keys(userCache).length} cached users`);
 })();

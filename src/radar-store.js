@@ -2,7 +2,7 @@
     const SMO = window.ScreepsMinimalOverlay;
     if (!SMO) return;
 
-    console.log("[Screeps Overlay] Radar store initialized");
+    if (SMO.config && SMO.config.debug) console.log("[Screeps Overlay] Radar store initialized");
 
     function handleRoomMapMessage(channel, payload) {
         // console.log("[Screeps Overlay] Raw message received:", channel, payload);
@@ -41,12 +41,12 @@
             
             // Log all messages from our page hook
             if (data && data.source === "screeps-roommap") {
-                // console.log("[Screeps Overlay] Message from page hook:", data);
+                if (SMO.config && SMO.config.debug) console.log("[Screeps Overlay] Message from page hook:", data);
                 handleRoomMapMessage(data.channel, data.payload);
             }
         },
         false
     );
 
-    console.log("[Screeps Overlay] Message listener attached");
+    if (SMO.config && SMO.config.debug) console.log("[Screeps Overlay] Message listener attached");
 })();

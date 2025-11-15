@@ -2,8 +2,16 @@
     if (window.SMOHookUtils) return;
 
     const LOG_PREFIX = "[Screeps Overlay][Hook]";
+    // Per-page debug toggle; set via injected script or via content script using SMO.setDebug
+    let DEBUG = !!(window.SMOHookUtils && window.SMOHookUtils.debug);
+
+    function setDebug(enabled) {
+        DEBUG = !!enabled;
+        try { window.SMOHookUtils.debug = DEBUG; } catch (e) { }
+    }
 
     function log(...args) {
+        if (!DEBUG) return;
         console.log(LOG_PREFIX, ...args);
     }
 
@@ -56,6 +64,11 @@
         return hash.includes("#!/map");
     }
 
+    function isRoomPage() {
+        const hash = window.location.hash || "";
+        return hash.includes("#!/room/");
+    }
+
     function postMessage(payload) {
         window.postMessage(payload, "*");
     }
@@ -67,6 +80,9 @@
         getAngularScopeByClass,
         deepGet,
         isMapPage,
+        isRoomPage,
+        setDebug,
+        get debug() { return DEBUG; },
         postMessage
     };
 
