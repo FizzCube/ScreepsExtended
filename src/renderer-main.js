@@ -6,7 +6,7 @@
     if (!SMO) return;
 
     // Import all the modules we need
-    const { normalizePointList, coordKey, buildTerrainWallLookup, isTerrainWall } = window.ScreepsRendererUtils;
+    const { normalizePointList, coordKey, buildTerrainWallLookup, isTerrainWall, isCorridorRoom, isMiddleRoom } = window.ScreepsRendererUtils;
     const { RESERVED_RADAR_KEYS } = window.ScreepsRendererConfig;
     const { drawBackground, drawTerrainLayer, drawExitArrows } = window.ScreepsTerrainRenderer;
     const { drawPoints } = window.ScreepsPointRenderer;
@@ -17,6 +17,7 @@
     const { drawMinerals } = window.ScreepsMineralRenderer;
     const { drawControllers } = window.ScreepsControllerRenderer;
     const { drawNPCs } = window.ScreepsNPCRenderer;
+    const { drawCreeps } = window.ScreepsCreepRenderer;
 
     /**
      * Render all room radar data to a canvas
@@ -113,6 +114,9 @@
 
             // Draw all other player structures (skip those on terrain walls)
             const terrainStr = SMO.terrain.getCachedTerrainString(shard, roomName);
+            const isCorridor = isCorridorRoom(roomName);
+            const isMiddle = isMiddleRoom(roomName);
+            
             Object.keys(data).forEach((key) => {
                 if (RESERVED_RADAR_KEYS.has(key)) return;
                 const value = data[key];
@@ -131,8 +135,13 @@
                             // Source Keepers
                             drawNPCs(ctx, filteredStructures, "sourcekeeper", scaleX, scaleY);
                         } else {
-                            // Regular player structures
-                            drawPoints(ctx, filteredStructures, "player", scaleX, scaleY);
+                            // Player structures - draw as creeps in corridors and middle rooms
+                            if (isCorridor || isMiddle) {
+                                drawCreeps(ctx, filteredStructures, key, scaleX, scaleY);
+                            } else {
+                                // Regular player structures
+                                drawPoints(ctx, filteredStructures, "player", scaleX, scaleY);
+                            }
                         }
                     }
                 }
