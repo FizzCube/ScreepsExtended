@@ -1,0 +1,45 @@
+{
+    "manifest_version": 3,
+    "name": "Screeps Minimal Room Overlay",
+    "version": "1.0.0",
+    "description": "Minimal overlay showing neighbouring rooms with terrain in Screeps.",
+    "permissions": [],
+    "host_permissions": ["https://screeps.com/*"],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "hooks/hook-utils.js",
+                "hooks/hook-roommap.js",
+                "hooks/hook-user-directory.js"
+            ],
+            "matches": ["https://screeps.com/*"]
+        }
+    ],
+    "content_scripts": [
+        {
+            "matches": ["https://screeps.com/*"],
+            "js": [
+                "src/bootstrap.js",
+                "src/terrain-cache.js",
+                "src/room-coords.js", 
+                "src/radar-store.js",
+				"src/user-cache.js",
+                "src/overlay.js",
+                "src/config/constants.js",
+                "src/utils/common.js",
+                "src/utils/deposit-image-cache.js",
+                "src/utils/badge-image-cache.js",
+                "src/renderers/terrain.js",
+                "src/renderers/points.js",
+                "src/renderers/roads.js",
+                "src/renderers/walls.js",
+                "src/renderers/minerals.js",
+                "src/renderers/controllers.js",
+                "src/renderer-main.js",
+                "src/watchers.js"
+            ],
+            "run_at": "document_start",
+            "all_frames": true
+        }
+    ]
+}
