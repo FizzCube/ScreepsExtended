@@ -26,7 +26,19 @@ const TYPE_STYLES = {
         glow: "rgba(255, 255, 255, 0.15)",
         glowOffset: 0.2
     },
-    player: { radius: 0.7, fill: "rgba(0, 255, 0, 0.9)" }
+    player: { radius: 0.7, fill: "rgba(0, 255, 0, 0.9)" },
+    invader: { 
+        radius: 0.8, 
+        fill: "rgba(255, 50, 50, 0.9)", 
+        outline: "rgba(200, 0, 0, 1)",
+        imageUrl: "https://screeps.com/a/vendor/renderer/metadata/creep-npc.svg"
+    },
+    sourcekeeper: { 
+        radius: 0.8, 
+        fill: "rgba(255, 150, 0, 0.9)", 
+        outline: "rgba(200, 100, 0, 1)",
+        imageUrl: "https://screeps.com/a/vendor/renderer/metadata/creep-npc.svg"
+    }
 };
 
 /**

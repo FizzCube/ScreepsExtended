@@ -2,7 +2,7 @@
  * Terrain rendering functions
  */
 (() => {
-    const { isCorridorRoom } = window.ScreepsRendererUtils;
+    const { isCorridorRoom, isMiddleRoom } = window.ScreepsRendererUtils;
 
     /**
      * Draw a single terrain layer pass for a specific terrain type
@@ -60,7 +60,18 @@
      */
     function drawBackground(ctx, width, height, roomName) {
         const isCorridor = isCorridorRoom(roomName);
-        ctx.fillStyle = isCorridor ? "rgba(65, 65, 65, 1)" : "rgba(43, 43, 43, 1)";
+        const isMiddle = isMiddleRoom(roomName);
+        
+        let backgroundColor;
+        if (isCorridor) {
+            backgroundColor = "rgba(65, 65, 65, 1)";
+        } else if (isMiddle) {
+            backgroundColor = "rgba(60, 45, 45, 1)"; // Slightly red-grey for middle rooms
+        } else {
+            backgroundColor = "rgba(43, 43, 43, 1)";
+        }
+        
+        ctx.fillStyle = backgroundColor;
         ctx.fillRect(0, 0, width, height);
     }
 

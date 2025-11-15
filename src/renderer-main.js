@@ -14,6 +14,7 @@
     const { drawPlayerWalls } = window.ScreepsWallRenderer;
     const { drawMinerals } = window.ScreepsMineralRenderer;
     const { drawControllers } = window.ScreepsControllerRenderer;
+    const { drawNPCs } = window.ScreepsNPCRenderer;
 
     /**
      * Render all room radar data to a canvas
@@ -119,7 +120,17 @@
                         value;
                     
                     if (filteredStructures.length > 0) {
-                        drawPoints(ctx, filteredStructures, "player", scaleX, scaleY);
+                        // Check if this is an NPC user ID
+                        if (key === "2") {
+                            // Invaders
+                            drawNPCs(ctx, filteredStructures, "invader", scaleX, scaleY);
+                        } else if (key === "3") {
+                            // Source Keepers
+                            drawNPCs(ctx, filteredStructures, "sourcekeeper", scaleX, scaleY);
+                        } else {
+                            // Regular player structures
+                            drawPoints(ctx, filteredStructures, "player", scaleX, scaleY);
+                        }
                     }
                 }
             });

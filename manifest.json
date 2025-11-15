@@ -35,6 +35,7 @@
                 "src/renderers/walls.js",
                 "src/renderers/minerals.js",
                 "src/renderers/controllers.js",
+                "src/renderers/npcs.js",
                 "src/renderer-main.js",
                 "src/watchers.js"
             ],

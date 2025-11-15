@@ -99,6 +99,22 @@ function isCorridorRoom(roomName) {
 }
 
 /**
+ * Check if a room is a middle room (coordinates 4, 5, 6 in each 10)
+ * @param {string} roomName - Room name to check
+ * @returns {boolean|null} True if middle room, false if not, null if invalid
+ */
+function isMiddleRoom(roomName) {
+    const parsed = parseRoomName(roomName);
+    if (!parsed) return null;
+    
+    // Check if both coordinates are in the middle range (4, 5, 6)
+    const weMiddle = parsed.weCoord % 10 >= 4 && parsed.weCoord % 10 <= 6;
+    const nsMiddle = parsed.nsCoord % 10 >= 4 && parsed.nsCoord % 10 <= 6;
+    
+    return weMiddle && nsMiddle;
+}
+
+/**
  * Infer the deposit type for a corridor room based on its coordinates
  * @param {string} roomName - Room name to analyze
  * @returns {string|null} Deposit type or null if not applicable
@@ -129,6 +145,7 @@ window.ScreepsRendererUtils = {
     normalizePointList,
     parseRoomName,
     isCorridorRoom,
+    isMiddleRoom,
     inferCorridorDepositType,
     isTerrainWall,
     buildTerrainWallLookup
