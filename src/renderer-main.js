@@ -6,7 +6,7 @@
     if (!SMO) return;
 
     // Import all the modules we need
-    const { normalizePointList, coordKey } = window.ScreepsRendererUtils;
+    const { normalizePointList, coordKey, buildTerrainWallLookup, isTerrainWall } = window.ScreepsRendererUtils;
     const { RESERVED_RADAR_KEYS } = window.ScreepsRendererConfig;
     const { drawBackground, drawTerrainLayer } = window.ScreepsTerrainRenderer;
     const { drawPoints } = window.ScreepsPointRenderer;
@@ -66,62 +66,61 @@
                 drawControllers(ctx, data.c, scaleX, scaleY);
             } else {
                 // Claimed room or corridors - find controller among player structures
-                Object.keys(data).forEach((key) => {
-                    if (RESERVED_RADAR_KEYS.has(key)) return;
-                    const value = data[key];
-                    if (Array.isArray(value)) {
-                        const { coords, lookup } = normalizePointList(value);
-                        const terrainStr = SMO.terrain.getCachedTerrainString(shard, roomName);
-                        if (!terrainStr) return;
-                        
-                        // Build wall lookup from terrain
-                        const wallLookup = new Set();
-                        for (let ty = 0; ty < 50; ty++) {
-                            for (let tx = 0; tx < 50; tx++) {
-                                const idx = ty * 50 + tx;
-                                const tileCode = terrainStr.charCodeAt(idx) - 48;
-                                if (tileCode === 1) {
-                                    wallLookup.add(coordKey(tx, ty));
-                                }
-                            }
-                        }
-                        
-                        // Find controller (structure on wall that's not a mineral)
-                        coords.forEach(([x, y]) => {
-                            if (wallLookup.has(coordKey(x, y))) {
-                                const mineralLocs = (data.m && Array.isArray(data.m)) ? normalizePointList(data.m).lookup : new Set();
-                                if (!mineralLocs.has(coordKey(x, y))) {
-                                    roomUserID = key;
-                                    const controllerUserName = roomUserID ? SMO.userCache.getUsernameById(roomUserID) : null;
-                                    
-                                    // Debug output
-                                    if (roomUserID) {
-                                        ctx.save();
-                                        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-                                        ctx.font = `${Math.max(8, scaleX * 0.3)}px Arial`;
-                                        ctx.textAlign = "left";
-                                        ctx.textBaseline = "top";
-                                        ctx.fillText(`Owner: ${roomUserID}`, 5, 5);
-                                        if (controllerUserName) {
-                                            ctx.fillText(`Username: ${controllerUserName}`, 5, 5 + Math.max(10, scaleY * 0.4));
+                const terrainStr = SMO.terrain.getCachedTerrainString(shard, roomName);
+                if (terrainStr) {
+                    const wallLookup = buildTerrainWallLookup(terrainStr);
+                    
+                    Object.keys(data).forEach((key) => {
+                        if (RESERVED_RADAR_KEYS.has(key)) return;
+                        const value = data[key];
+                        if (Array.isArray(value)) {
+                            const { coords } = normalizePointList(value);
+                            const mineralLocs = (data.m && Array.isArray(data.m)) ? normalizePointList(data.m).lookup : new Set();
+                            
+                            // Find controller (structure on wall that's not a mineral)
+                            coords.forEach(([x, y]) => {
+                                if (wallLookup.has(coordKey(x, y))) {
+                                    if (!mineralLocs.has(coordKey(x, y))) {
+                                        roomUserID = key;
+                                        const controllerUserName = roomUserID ? SMO.userCache.getUsernameById(roomUserID) : null;
+                                        
+                                        // Debug output
+                                        if (roomUserID) {
+                                            ctx.save();
+                                            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                                            ctx.font = `${Math.max(8, scaleX * 0.3)}px Arial`;
+                                            ctx.textAlign = "left";
+                                            ctx.textBaseline = "top";
+                                            ctx.fillText(`Owner: ${roomUserID}`, 5, 5);
+                                            if (controllerUserName) {
+                                                ctx.fillText(`Username: ${controllerUserName}`, 5, 5 + Math.max(10, scaleY * 0.4));
+                                            }
+                                            ctx.restore();
                                         }
-                                        ctx.restore();
-                                    }
 
-                                    drawControllers(ctx, [[x, y]], scaleX, scaleY, controllerUserName);
+                                        drawControllers(ctx, [[x, y]], scaleX, scaleY, controllerUserName);
+                                    }
                                 }
-                            }
-                        });
-                    }
-                });
+                            });
+                        }
+                    });
+                }
             }
 
-            // Draw all other player structures
+            // Draw all other player structures (skip those on terrain walls)
+            const terrainStr = SMO.terrain.getCachedTerrainString(shard, roomName);
             Object.keys(data).forEach((key) => {
                 if (RESERVED_RADAR_KEYS.has(key)) return;
                 const value = data[key];
                 if (Array.isArray(value)) {
-                    drawPoints(ctx, value, "player", scaleX, scaleY);
+                    // Filter out structures on terrain walls
+                    const filteredStructures = terrainStr ? 
+                        value.filter(([x, y]) => !isTerrainWall(terrainStr, x, y)) : 
+                        value;
+                    
+                    if (filteredStructures.length > 0) {
+                        drawPoints(ctx, filteredStructures, "player", scaleX, scaleY);
+                    }
                 }
             });
         }

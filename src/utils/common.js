@@ -37,6 +37,39 @@ function normalizePointList(points) {
 }
 
 /**
+ * Check if a coordinate is a terrain wall
+ * @param {string} terrainString - The terrain string for the room
+ * @param {number} x - X coordinate (0-49)
+ * @param {number} y - Y coordinate (0-49)
+ * @returns {boolean} True if the coordinate is a wall
+ */
+function isTerrainWall(terrainString, x, y) {
+    if (!terrainString || x < 0 || x >= 50 || y < 0 || y >= 50) return false;
+    const idx = y * 50 + x;
+    const tileCode = terrainString.charCodeAt(idx) - 48;
+    return tileCode === 1;
+}
+
+/**
+ * Build a lookup set of all terrain wall coordinates in a room
+ * @param {string} terrainString - The terrain string for the room
+ * @returns {Set<string>} Set of coordinate keys for wall positions
+ */
+function buildTerrainWallLookup(terrainString) {
+    const wallLookup = new Set();
+    if (!terrainString) return wallLookup;
+    
+    for (let y = 0; y < 50; y++) {
+        for (let x = 0; x < 50; x++) {
+            if (isTerrainWall(terrainString, x, y)) {
+                wallLookup.add(coordKey(x, y));
+            }
+        }
+    }
+    return wallLookup;
+}
+
+/**
  * Parse a Screeps room name into its components
  * @param {string} roomName - Room name like "W1N1" or "E2S3"
  * @returns {Object|null} Parsed room info or null if invalid
@@ -96,5 +129,7 @@ window.ScreepsRendererUtils = {
     normalizePointList,
     parseRoomName,
     isCorridorRoom,
-    inferCorridorDepositType
+    inferCorridorDepositType,
+    isTerrainWall,
+    buildTerrainWallLookup
 };
