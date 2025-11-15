@@ -20,23 +20,28 @@
         const halfSize = minScale * 0.5;
         const cornerCut = halfSize * 0.35;
         const innerRadius = minScale * 0.5;
-        const glowRadius = halfSize + minScale * (style.glowOffset || 0.2);
+        const glowSize = minScale * 3; // 6x6 glow effect
         const outerFill = style.fill || "rgba(0, 0, 0, 1)";
         const innerFill = style.innerFill || "rgba(60, 60, 60, 1)";
-        const glowFill = style.glow || "rgba(255, 255, 255, 0.15)";
-        const normalizedUserName = typeof userName === "string" ? userName.trim() : "";
+
+		const normalizedUserName = typeof userName === "string" ? userName.trim() : "";
         const badgeEntry = normalizedUserName ? getBadgeImageEntry(normalizedUserName) : null;
 
         controllerPoints.forEach(([x, y]) => {
             const cx = (x + 0.5) * scaleX;
             const cy = (y + 0.5) * scaleY;
 
-            ctx.save();
-            ctx.fillStyle = glowFill;
-            ctx.beginPath();
-            ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            // Draw white glow effect
+			ctx.save();
+			const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowSize);
+			gradient.addColorStop(0, "rgba(255, 255, 255, 0.4)");
+			gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.1)");
+			gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+			ctx.fillStyle = gradient;
+			ctx.beginPath();
+			ctx.arc(cx, cy, glowSize, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.restore();
 
             ctx.save();
             ctx.fillStyle = outerFill;

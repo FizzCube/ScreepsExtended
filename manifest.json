@@ -31,6 +31,8 @@
                 "src/utils/badge-image-cache.js",
                 "src/renderers/terrain.js",
                 "src/renderers/points.js",
+                "src/renderers/sources.js",
+                "src/renderers/powerbanks.js",
                 "src/renderers/roads.js",
                 "src/renderers/walls.js",
                 "src/renderers/minerals.js",

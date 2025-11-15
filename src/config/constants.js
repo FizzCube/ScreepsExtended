@@ -23,7 +23,7 @@ const TYPE_STYLES = {
         fill: "rgba(0, 0, 0, 1)",
         innerFill: "rgba(60, 60, 60, 1)",
         innerScale: 0.5,
-        glow: "rgba(255, 255, 255, 0.15)",
+        glow: "rgba(180, 180, 180, 0.2)",
         glowOffset: 0.2
     },
     player: { radius: 0.7, fill: "rgba(0, 255, 0, 0.9)" },

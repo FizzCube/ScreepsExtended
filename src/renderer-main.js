@@ -10,6 +10,8 @@
     const { RESERVED_RADAR_KEYS } = window.ScreepsRendererConfig;
     const { drawBackground, drawTerrainLayer } = window.ScreepsTerrainRenderer;
     const { drawPoints } = window.ScreepsPointRenderer;
+    const { drawSources } = window.ScreepsSourceRenderer;
+    const { drawPowerBanks } = window.ScreepsPowerBankRenderer;
     const { drawRoadNetwork } = window.ScreepsRoadRenderer;
     const { drawPlayerWalls } = window.ScreepsWallRenderer;
     const { drawMinerals } = window.ScreepsMineralRenderer;
@@ -53,10 +55,10 @@
             // Draw structures in rendering order
             drawRoadNetwork(ctx, data.r, scaleX, scaleY);  // roads with connections
             drawPlayerWalls(ctx, data.w, scaleX, scaleY);  // walls with connections
-            drawPoints(ctx, data.s, "s", scaleX, scaleY);  // sources
+            drawSources(ctx, data.s, scaleX, scaleY);  // sources with yellow glow
             drawMinerals(ctx, data.m, scaleX, scaleY, roomName);  // minerals / deposits
             drawPoints(ctx, data.k, "k", scaleX, scaleY);  // keeper lairs
-            drawPoints(ctx, data.pb, "pb", scaleX, scaleY); // power banks
+            drawPowerBanks(ctx, data.pb, scaleX, scaleY); // power banks with enhanced rendering
             drawPoints(ctx, data.p, "p", scaleX, scaleY);   // portals
             
             let roomUserID;
