@@ -8,7 +8,7 @@
     // Import all the modules we need
     const { normalizePointList, coordKey, buildTerrainWallLookup, isTerrainWall } = window.ScreepsRendererUtils;
     const { RESERVED_RADAR_KEYS } = window.ScreepsRendererConfig;
-    const { drawBackground, drawTerrainLayer } = window.ScreepsTerrainRenderer;
+    const { drawBackground, drawTerrainLayer, drawExitArrows } = window.ScreepsTerrainRenderer;
     const { drawPoints } = window.ScreepsPointRenderer;
     const { drawSources } = window.ScreepsSourceRenderer;
     const { drawPowerBanks } = window.ScreepsPowerBankRenderer;
@@ -44,6 +44,7 @@
         const terrainString = SMO.terrain.getCachedTerrainString(shard, roomName);
         if (terrainString) {
             drawTerrainLayer(ctx, terrainString, scaleX, scaleY);
+            drawExitArrows(ctx, terrainString, scaleX, scaleY);
         }
 
         // Get room data

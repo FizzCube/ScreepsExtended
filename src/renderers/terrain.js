@@ -51,6 +51,81 @@
         drawTerrainLayerPass(ctx, terrainString, scaleX, scaleY, 1, "rgba(23, 23, 23, 1)", 1);
     }
 
+    // Cache for exit arrow images
+    const exitImages = {};
+
+    /**
+     * Load exit arrow SVG images
+     */
+    function loadExitImages() {
+        const directions = ['top', 'bottom', 'left', 'right'];
+        directions.forEach(dir => {
+            const img = new Image();
+            img.src = `https://screeps.com/a/vendor/renderer/metadata/exit-${dir}.svg`;
+            exitImages[dir] = img;
+        });
+    }
+
+    /**
+     * Draw exit arrows at room edges where there are no walls
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {string} terrainString - Terrain data string
+     * @param {number} scaleX - X scale factor
+     * @param {number} scaleY - Y scale factor
+     */
+    function drawExitArrows(ctx, terrainString, scaleX, scaleY) {
+        if (!terrainString || terrainString.length < 2500) return;
+
+        const size = Math.min(scaleX, scaleY) * 0.8;
+
+        // Check top edge (y = 0)
+        for (let x = 0; x < 50; x++) {
+            const idx = 0 * 50 + x;
+            const tileCode = terrainString.charCodeAt(idx) - 48;
+            if (tileCode !== 1 && exitImages.top) {
+                const centerX = x * scaleX + scaleX/2;
+                const centerY = scaleY/2;
+                ctx.drawImage(exitImages.top, centerX - size/2, centerY - size/2, size, size);
+            }
+        }
+
+        // Check bottom edge (y = 49)
+        for (let x = 0; x < 50; x++) {
+            const idx = 49 * 50 + x;
+            const tileCode = terrainString.charCodeAt(idx) - 48;
+            if (tileCode !== 1 && exitImages.bottom) {
+                const centerX = x * scaleX + scaleX/2;
+                const centerY = 49 * scaleY + scaleY/2;
+                ctx.drawImage(exitImages.bottom, centerX - size/2, centerY - size/2, size, size);
+            }
+        }
+
+        // Check left edge (x = 0)
+        for (let y = 0; y < 50; y++) {
+            const idx = y * 50 + 0;
+            const tileCode = terrainString.charCodeAt(idx) - 48;
+            if (tileCode !== 1 && exitImages.left) {
+                const centerX = scaleX/2;
+                const centerY = y * scaleY + scaleY/2;
+                ctx.drawImage(exitImages.left, centerX - size/2, centerY - size/2, size, size);
+            }
+        }
+
+        // Check right edge (x = 49)
+        for (let y = 0; y < 50; y++) {
+            const idx = y * 50 + 49;
+            const tileCode = terrainString.charCodeAt(idx) - 48;
+            if (tileCode !== 1 && exitImages.right) {
+                const centerX = 49 * scaleX + scaleX/2;
+                const centerY = y * scaleY + scaleY/2;
+                ctx.drawImage(exitImages.right, centerX - size/2, centerY - size/2, size, size);
+            }
+        }
+    }
+
+    // Load images when module loads
+    loadExitImages();
+
     /**
      * Draw the background for a room
      * @param {CanvasRenderingContext2D} ctx - Canvas context
@@ -78,6 +153,7 @@
     // Export for use in other modules
     window.ScreepsTerrainRenderer = {
         drawTerrainLayer,
-        drawBackground
+        drawBackground,
+        drawExitArrows
     };
 })();
