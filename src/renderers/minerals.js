@@ -46,7 +46,7 @@
         }
         
         const minScale = Math.min(scaleX, scaleY);
-        const iconSize = minScale * (typeInfo.size || 2.4);
+        const iconSize = minScale * (typeInfo.size || 2);
         minerals.forEach(([x, y]) => {
             const cx = (x + 0.5) * scaleX;
             const cy = (y + 0.5) * scaleY;

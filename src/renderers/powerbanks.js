@@ -38,7 +38,7 @@
         const style = TYPE_STYLES.pb || { radius: 1, fill: "rgba(255, 0, 0, 0.9)" };
         const minScale = Math.min(scaleX, scaleY);
         const baseRadius = style.radius * minScale * 0.5;
-        const oversizedRadius = baseRadius * 1.2; // Slightly oversized
+        const oversizedRadius = baseRadius * 1.9; // Slightly oversized
         const innerRedRadius = baseRadius * 0.6; // Inner red circle
         const glowSize = minScale * 4.5; // 9x9 glow (9/2 = 4.5)
 

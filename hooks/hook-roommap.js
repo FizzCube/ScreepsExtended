@@ -27,17 +27,20 @@
 
         if (!outer) return null;
 
-        if (Array.isArray(outer) && typeof outer[0] === "string" && outer[0].startsWith("roomMap2:")) {
-            return outer;
-        }
-
         if (
             Array.isArray(outer) &&
             outer.length === 1 &&
             typeof outer[0] === "string" &&
-            outer[0].startsWith('["roomMap2:')
+            outer[0].startsWith('["')
         ) {
-            return safeParse(outer[0]);
+            const nested = safeParse(outer[0]);
+            if (nested) {
+                outer = nested;
+            }
+        }
+
+        if (Array.isArray(outer) && typeof outer[0] === "string") {
+            return outer;
         }
 
         return null;
@@ -55,16 +58,31 @@
                     if (!parsed) return;
 
                     const [channel, payload] = parsed;
-                    if (typeof channel !== "string" || !channel.startsWith("roomMap2:")) return;
+                    if (typeof channel !== "string") return;
 
-                    window.postMessage(
-                        {
-                            source: "screeps-roommap",
-                            channel,
-                            payload
-                        },
-                        "*"
-                    );
+                    if (channel.startsWith("roomMap2:")) {
+                        window.postMessage(
+                            {
+                                source: "screeps-roommap",
+                                channel,
+                                payload
+                            },
+                            "*"
+                        );
+                        return;
+                    }
+
+                    const userMatch = channel.match(/^user:([^/]+)/);
+                    if (userMatch) {
+                        window.postMessage(
+                            {
+                                source: "screeps-hook:user-meta",
+                                type: "self-user-id",
+                                userId: userMatch[1]
+                            },
+                            "*"
+                        );
+                    }
                 });
             }
         } catch (error) {

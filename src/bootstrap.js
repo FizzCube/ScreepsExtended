@@ -11,7 +11,7 @@
     SMO.roomRadarData = Object.create(null);
     // Central configuration and debug toggle
     SMO.config = SMO.config || {};
-    SMO.config.debug = SMO.config.debug || false;
+    SMO.config.debug = SMO.config.debug || true;
 
     /**
      * Set the debug toggle for content-script logging and the injected page hooks.

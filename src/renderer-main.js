@@ -6,7 +6,7 @@
     if (!SMO) return;
 
     // Import all the modules we need
-    const { normalizePointList, coordKey, buildTerrainWallLookup, isTerrainWall, isCorridorRoom, isMiddleRoom } = window.ScreepsRendererUtils;
+    const { normalizePointList, coordKey, buildTerrainWallLookup, isTerrainWall } = window.ScreepsRendererUtils;
     const { RESERVED_RADAR_KEYS } = window.ScreepsRendererConfig;
     const { drawBackground, drawTerrainLayer, drawExitArrows } = window.ScreepsTerrainRenderer;
     const { drawPoints } = window.ScreepsPointRenderer;
@@ -18,6 +18,7 @@
     const { drawControllers } = window.ScreepsControllerRenderer;
     const { drawNPCs } = window.ScreepsNPCRenderer;
     const { drawCreeps } = window.ScreepsCreepRenderer;
+    const { drawSolidStructures } = window.ScreepsStructureRenderer;
 
     /**
      * Render all room radar data to a canvas
@@ -52,6 +53,17 @@
         const shardData = SMO.roomRadarData[shard];
         const roomEntry = shardData && shardData[roomName];
         const data = roomEntry ? roomEntry.raw || {} : null;
+
+        const roomObjectCache = SMO.roomObjects || null;
+        const solidStructures = roomObjectCache ? roomObjectCache.getSolidStructures(shard, roomName) : null;
+        const solidCoordLookup = roomObjectCache ? roomObjectCache.getSolidStructureLookup(shard, roomName) : null;
+        const hasSolidStructureAt = solidCoordLookup
+            ? (x, y) => Boolean(solidCoordLookup[coordKey(x, y)])
+            : null;
+
+        if (solidStructures) {
+            drawSolidStructures(ctx, solidStructures, scaleX, scaleY);
+        }
 
         if (data) {
             // Draw structures in rendering order
@@ -114,36 +126,30 @@
 
             // Draw all other player structures (skip those on terrain walls)
             const terrainStr = SMO.terrain.getCachedTerrainString(shard, roomName);
-            const isCorridor = isCorridorRoom(roomName);
-            const isMiddle = isMiddleRoom(roomName);
             
             Object.keys(data).forEach((key) => {
                 if (RESERVED_RADAR_KEYS.has(key)) return;
                 const value = data[key];
-                if (Array.isArray(value)) {
-                    // Filter out structures on terrain walls
-                    const filteredStructures = terrainStr ? 
-                        value.filter(([x, y]) => !isTerrainWall(terrainStr, x, y)) : 
-                        value;
-                    
-                    if (filteredStructures.length > 0) {
-                        // Check if this is an NPC user ID
-                        if (key === "2") {
-                            // Invaders
-                            drawNPCs(ctx, filteredStructures, "invader", scaleX, scaleY);
-                        } else if (key === "3") {
-                            // Source Keepers
-                            drawNPCs(ctx, filteredStructures, "sourcekeeper", scaleX, scaleY);
-                        } else {
-                            // Player structures - draw as creeps in corridors and middle rooms
-                            if (isCorridor || isMiddle) {
-                                drawCreeps(ctx, filteredStructures, key, scaleX, scaleY);
-                            } else {
-                                // Regular player structures
-                                drawPoints(ctx, filteredStructures, "player", scaleX, scaleY);
-                            }
-                        }
-                    }
+                if (!Array.isArray(value) || value.length === 0) return;
+
+                let filteredPositions = value;
+
+                if (terrainStr) {
+                    filteredPositions = filteredPositions.filter(([x, y]) => !isTerrainWall(terrainStr, x, y));
+                }
+
+                if (hasSolidStructureAt) {
+                    filteredPositions = filteredPositions.filter(([x, y]) => !hasSolidStructureAt(x, y));
+                }
+
+                if (filteredPositions.length === 0) return;
+
+                if (key === "2") {
+                    drawNPCs(ctx, filteredPositions, "invader", scaleX, scaleY);
+                } else if (key === "3") {
+                    drawNPCs(ctx, filteredPositions, "sourcekeeper", scaleX, scaleY);
+                } else {
+                    drawCreeps(ctx, filteredPositions, key, scaleX, scaleY);
                 }
             });
         }
@@ -162,7 +168,12 @@
         const { shard, roomName } = roomInfo;
 
         const neighbours = SMO.rooms.computeNeighbourRooms(roomName);
-        SMO.terrain.ensureRoomsQueued(shard, [roomName, ...neighbours.map((n) => n.roomName)]);
+        const roomsToQueue = [roomName, ...neighbours.map((n) => n.roomName)];
+        SMO.terrain.ensureRoomsQueued(shard, roomsToQueue);
+
+        if (SMO.roomObjects && typeof SMO.roomObjects.ensureRoomsQueued === "function") {
+            SMO.roomObjects.ensureRoomsQueued(shard, roomsToQueue);
+        }
 
         const overlay = SMO.overlay.ensureOverlay();
         if (!overlay) return;

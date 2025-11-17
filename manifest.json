@@ -22,9 +22,11 @@
             "js": [
                 "src/bootstrap.js",
                 "src/terrain-cache.js",
+                "src/room-objects-cache.js",
                 "src/room-coords.js", 
                 "src/radar-store.js",
 				"src/user-cache.js",
+			"src/self-user.js",
                 "src/overlay.js",
                 "src/config/constants.js",
                 "src/utils/common.js",
@@ -39,6 +41,7 @@
                 "src/renderers/minerals.js",
                 "src/renderers/controllers.js",
                 "src/renderers/npcs.js",
+			"src/renderers/structures.js",
 				"src/renderers/creeps.js",
                 "src/renderer-main.js",
                 "src/watchers.js"

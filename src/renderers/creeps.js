@@ -19,7 +19,7 @@
     function drawCreeps(ctx, creepPositions, userID, scaleX, scaleY) {
         if (!creepPositions || !Array.isArray(creepPositions)) return;
 
-        const creepSize = Math.min(scaleX, scaleY) * 0.8;
+        const creepSize = Math.min(scaleX, scaleY) * 0.98;
         const badgeSize = creepSize * 0.6;
 
         // Get username for badge
