@@ -5,7 +5,9 @@
     const overlayState = {
         container: null,
         canvases: new Map(),
-        stage: null
+        stage: null,
+        // track last measured pixel size so we only update canvas buffers when needed
+        lastStagePixels: { widthPx: 0, heightPx: 0, dpr: 0 }
     };
 
     // Tracks whether we've installed the click/drag guard for exit buttons.
@@ -81,28 +83,68 @@
         }
 
         const canvas = document.createElement("canvas");
+
+        // Make the canvas inherit the parent size via CSS (no per-canvas absolute px sizing).
         canvas.style.position = "absolute";
+        canvas.style.left = "0";
+        canvas.style.top = "0";
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.transformOrigin = "0 0";
         canvas.style.pointerEvents = "none";
         canvas.style.opacity = "0.9";
+        canvas.style.willChange = "transform";
+
+        // keep a data attr for debugging
+        canvas.dataset.smoRoom = roomName;
 
         overlayState.container.appendChild(canvas);
         overlayState.canvases.set(roomName, canvas);
         return canvas;
     }
 
+    // Helper: only update buffers when the stage's pixel dimensions or DPR changed
+    function updateCanvasPixelBuffersIfNeeded() {
+        if (!overlayState.stage || overlayState.canvases.size === 0) return;
+        const stageRect = overlayState.stage.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const targetWidthPx = Math.round(stageRect.width * dpr);
+        const targetHeightPx = Math.round(stageRect.height * dpr);
+
+        const last = overlayState.lastStagePixels || {};
+        if (targetWidthPx === last.widthPx && targetHeightPx === last.heightPx && dpr === last.dpr) {
+            return;
+        }
+
+        overlayState.lastStagePixels = { widthPx: targetWidthPx, heightPx: targetHeightPx, dpr };
+
+        // Resize the backing buffer for each canvas just once (avoid per-render).
+        overlayState.canvases.forEach((canvas) => {
+            // Avoid re-assigning if already correct (some browsers might have fractional sizing).
+            if (canvas.width !== targetWidthPx || canvas.height !== targetHeightPx) {
+                canvas.width = targetWidthPx;
+                canvas.height = targetHeightPx;
+                // Most renderers will expect ctx drawn at device pixel ratio; callers should scale
+                // their ctx by dpr if needed. We don't need to set CSS width/height because we use 100%.
+            }
+        });
+    }
+
     function layoutCanvases(neighbours) {
         if (!overlayState.container) return;
         const metrics = getStageSize();
         if (!metrics) return;
-        const { width, height } = metrics;
+
+        // Keep canvas pixel buffers in sync only when stage dims/DPR changed.
+        updateCanvasPixelBuffersIfNeeded();
 
         neighbours.forEach(({ dx, dy, roomName }) => {
             const canvas = getCanvasForRoom(roomName);
             if (!canvas) return;
-            canvas.width = width;
-            canvas.height = height;
-            canvas.style.left = `${dx * width}px`;
-            canvas.style.top = `${dy * height}px`;
+
+            // Each canvas is sized to 100% of the parent with transform origin at 0,0.
+            // Move it by whole canvas widths/heights using percentages so we don't need px math here.
+            canvas.style.transform = `translate(${dx * 100}%, ${dy * 100}%)`;
         });
     }
 
