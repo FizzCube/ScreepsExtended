@@ -86,20 +86,14 @@
         for (const [x, y] of points) {
             const cx = (x + 0.5) * scaleX;
             const cy = (y + 0.5) * scaleY;
-            
-            // Add a subtle colored background circle to distinguish NPC types
-            ctx.fillStyle = npcType === "invader" ? "rgba(255, 100, 100, 0.3)" : "rgba(255, 150, 0, 0.3)";
-            ctx.beginPath();
-            ctx.arc(cx, cy, size * 0.6, 0, Math.PI * 2);
-            ctx.fill();
-            
+            const renderSize = size * 0.9;
             // Draw the NPC image
             ctx.drawImage(
                 img,
-                cx - size / 2,
-                cy - size / 2,
-                size,
-                size
+                cx - renderSize / 2,
+                cy - renderSize / 2,
+                renderSize,
+                renderSize
             );
         }
         
