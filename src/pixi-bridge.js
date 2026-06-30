@@ -53,6 +53,15 @@
 				return;
 			}
 			this.log(`PIXI v${PIXI.VERSION} found.`);
+			// Idempotency guard: if this file runs more than once (all_frames
+			// re-injection, extension reload without a page reload, dev hot-reload),
+			// re-wrapping render would capture the already-wrapped function as its
+			// "original" and stack a second wrapper, running applyTransform twice per
+			// frame. Tag the patched function and bail if it's already ours.
+			if (PIXI.Renderer.prototype.render.__smoPatched) {
+				this.log("Renderer.prototype.render already patched; skipping.");
+				return;
+			}
 			const self = this;
 			const originalRender = PIXI.Renderer.prototype.render;
 			PIXI.Renderer.prototype.render = function (displayObject, options) {
@@ -71,6 +80,7 @@
 				}
 				return result;
 			};
+			PIXI.Renderer.prototype.render.__smoPatched = true;
 			this.log("Patched Renderer.prototype.render");
 		}
 
@@ -160,7 +170,9 @@
 		}
 	}
 
-	SMO.PixiBridge = new PixiBridge();
+	// Reuse an existing instance if this script runs again, so we don't discard a
+	// live bridge (the prototype patch itself is also guarded in installPatches).
+	SMO.PixiBridge = SMO.PixiBridge || new PixiBridge();
 	SMO.PixiBridge.init();
 
 })(window);
