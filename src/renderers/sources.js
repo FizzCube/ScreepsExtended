@@ -16,7 +16,7 @@
 
         const style = TYPE_STYLES.s || { radius: 0.8, fill: "rgba(255, 215, 0, 0.9)" };
         const minScale = Math.min(scaleX, scaleY);
-        const radius = style.radius * minScale * 0.5;
+        const radius = style.radius * minScale * 0.4;
         const glowSize = minScale * 3; // 6x6 glow effect
 
         sourcePoints.forEach(([x, y]) => {
@@ -27,24 +27,26 @@
 
 			ctx.save();
 			const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowSize);
-			gradient.addColorStop(0, "rgba(255, 215, 0, 0.4)");
-			gradient.addColorStop(0.5, "rgba(255, 215, 0, 0.2)");
-			gradient.addColorStop(1, "rgba(255, 215, 0, 0)");
+			gradient.addColorStop(0, "rgba(244, 214, 110, 0.2)");
+			gradient.addColorStop(0.5, "rgba(244, 214, 110, 0.1)");
+			gradient.addColorStop(1, "rgba(244, 214, 110, 0)");
 			ctx.fillStyle = gradient;
 			ctx.beginPath();
 			ctx.arc(cx, cy, glowSize, 0, Math.PI * 2);
 			ctx.fill();
 			ctx.restore();
-            
-            // Draw the source itself
+
+            // Draw the source itself as a rounded-corner square
             ctx.save();
-            ctx.fillStyle = style.fill;
+            ctx.fillStyle = "#f4d66e";
             if (style.outline) {
                 ctx.strokeStyle = style.outline;
                 ctx.lineWidth = Math.max(1, radius * 0.3);
             }
+            const half = radius;
+            const cornerRadius = radius * 0.65;
             ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.roundRect(cx - half, cy - half, half * 2, half * 2, cornerRadius);
             if (style.outline) {
                 ctx.stroke();
             }
