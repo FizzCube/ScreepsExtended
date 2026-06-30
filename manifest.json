@@ -29,6 +29,7 @@
 				"src/user-cache.js",
 			"src/self-user.js",
                 "src/overlay.js",
+                "src/exit-click-guard.js",
                 "src/config/constants.js",
                 "src/utils/common.js",
                 "src/utils/deposit-image-cache.js",
