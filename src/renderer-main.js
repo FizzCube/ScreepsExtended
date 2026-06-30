@@ -21,12 +21,14 @@
     const { drawSolidStructures } = window.ScreepsStructureRenderer;
 
     /**
-     * Render all room radar data to a canvas
+     * Render the STATIC layer for a room - terrain plus every non-animated
+     * structure. Redrawn only on room/zoom/data change (driven by render()),
+     * never per animation frame.
      * @param {string} shard - Shard name
      * @param {string} roomName - Room name
-     * @param {HTMLCanvasElement} canvas - Target canvas
+     * @param {HTMLCanvasElement} canvas - Target static canvas
      */
-    function drawRoomRadarToCanvas(shard, roomName, canvas) {
+    function drawRoomStatic(shard, roomName, canvas) {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
@@ -62,7 +64,7 @@
             : null;
 
         if (solidStructures) {
-            drawSolidStructures(ctx, solidStructures, scaleX, scaleY);
+            drawSolidStructures(ctx, solidStructures, scaleX, scaleY, { layer: "static" });
         }
 
         if (data) {
@@ -190,13 +192,59 @@
         SMO.overlay.cleanupUnusedCanvases(neighbours.map((n) => n.roomName));
 
         neighbours.forEach(({ roomName: neighbourRoom }) => {
-            const canvas = SMO.overlay.getCanvasForRoom(neighbourRoom);
-            if (canvas) {
-                drawRoomRadarToCanvas(shard, neighbourRoom, canvas);
+            const pair = SMO.overlay.getCanvasesForRoom(neighbourRoom);
+            if (pair && pair.staticCanvas) {
+                drawRoomStatic(shard, neighbourRoom, pair.staticCanvas);
             }
         });
     }
 
-    // Export the main render function
+    /**
+     * Render the ANIMATED layer for a room - only the animated structures
+     * (rotating towers, etc.). Cleared and repainted every animation tick.
+     * @param {string} shard - Shard name
+     * @param {string} roomName - Room name
+     * @param {HTMLCanvasElement} canvas - Target animated canvas
+     */
+    function drawRoomAnimated(shard, roomName, canvas) {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const width = canvas.width;
+        const height = canvas.height;
+        if (!width || !height) return;
+        const scaleX = width / 50;
+        const scaleY = height / 50;
+
+        ctx.clearRect(0, 0, width, height);
+
+        const roomObjectCache = SMO.roomObjects || null;
+        const solidStructures = roomObjectCache ? roomObjectCache.getSolidStructures(shard, roomName) : null;
+        if (solidStructures) {
+            drawSolidStructures(ctx, solidStructures, scaleX, scaleY, { layer: "animated" });
+        }
+    }
+
+    /**
+     * Repaint just the animated layer of every visible neighbour. Cheap enough to
+     * run at ~30fps (see watchers.js) - it clears small canvases and draws only
+     * the animated structures, leaving the heavy static layer untouched.
+     */
+    function renderAnimated() {
+        const roomInfo = SMO.rooms.detectCurrentRoomFromHash();
+        if (!roomInfo) return;
+        const { shard, roomName } = roomInfo;
+
+        const neighbours = SMO.rooms.computeNeighbourRooms(roomName);
+        neighbours.forEach(({ roomName: neighbourRoom }) => {
+            const pair = SMO.overlay.getCanvasesForRoom(neighbourRoom, { createIfMissing: false });
+            if (pair && pair.animatedCanvas) {
+                drawRoomAnimated(shard, neighbourRoom, pair.animatedCanvas);
+            }
+        });
+    }
+
+    // Export the render functions
     SMO.render = render;
+    SMO.renderAnimated = renderAnimated;
 })();

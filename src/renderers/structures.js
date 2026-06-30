@@ -18,6 +18,11 @@
     const badgeAPI = window.ScreepsBadgeImageCache || {};
     const getBadgeImageEntry = typeof badgeAPI.getBadgeImageEntry === "function" ? badgeAPI.getBadgeImageEntry : null;
     const SKIP_DIRECT_RENDER_TYPES = new Set(["constructedWall", "powerBank"]);
+    // Structure types whose rendering changes every frame (e.g. rotating tower
+    // tops). These are drawn on the separate "animated" overlay canvas at ~30fps;
+    // the heavy static content (terrain, roads, everything else) is drawn once on
+    // the "static" canvas and left alone. Add future animated types here.
+    const ANIMATED_TYPES = new Set(["tower"]);
     const RAMPART_LAYER_CACHE = Object.create(null);
     const imageCache = Object.create(null);
     const ASSETS = {
@@ -511,14 +516,21 @@
         });
     }
 
-    function drawSolidStructures(ctx, structuresByType, scaleX, scaleY) {
+    // layer: "static" (default) draws everything except ANIMATED_TYPES; "animated"
+    // draws only ANIMATED_TYPES. This lets the caller keep the expensive static
+    // content on a rarely-redrawn canvas and repaint only the animated bits.
+    function drawSolidStructures(ctx, structuresByType, scaleX, scaleY, opts) {
         if (!ctx || !structuresByType || typeof structuresByType !== "object") return;
+        const layer = (opts && opts.layer) || "static";
         const now = performance.now();
         const selfId = SMO.selfUser && SMO.selfUser.userId ? String(SMO.selfUser.userId) : null;
         const rampartEntries = [];
 
         Object.keys(structuresByType).forEach((type) => {
             if (SKIP_DIRECT_RENDER_TYPES.has(type)) return;
+            const isAnimated = ANIMATED_TYPES.has(type);
+            if (layer === "animated" && !isAnimated) return;
+            if (layer === "static" && isAnimated) return;
             const entries = structuresByType[type];
             if (!Array.isArray(entries) || entries.length === 0) return;
 

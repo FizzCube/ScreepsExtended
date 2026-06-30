@@ -51,15 +51,30 @@
             }
         }, false);
 
-        function animationLoop() {
-            SMO.overlay.ensureOverlay();
-            if (typeof SMO.render === "function") {
-                SMO.render();
+        // Static content is event-driven: the handlers above (hashchange, resize,
+        // DOM mutation, zoom hook) plus SMO.render() calls from the terrain and
+        // room-object caches when data arrives all repaint the static layer. The
+        // only thing that needs a steady loop is the cheap animated layer
+        // (rotating towers, etc.), throttled here to ~30fps.
+        const ANIM_INTERVAL_MS = 1000 / 30;
+        let lastAnimAt = 0;
+        function animationLoop(now) {
+            if (now - lastAnimAt >= ANIM_INTERVAL_MS) {
+                lastAnimAt = now;
+                if (typeof SMO.renderAnimated === "function") {
+                    SMO.renderAnimated();
+                }
             }
             requestAnimationFrame(animationLoop);
         }
-
         requestAnimationFrame(animationLoop);
+
+        // Initial kick: the MutationObserver only fires on changes, so if the
+        // room stage is already present we still seed one static render.
+        SMO.overlay.ensureOverlay();
+        if (typeof SMO.render === "function") {
+            SMO.render();
+        }
     }
 
     watchRoomAndStage();

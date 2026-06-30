@@ -135,7 +135,7 @@
 ## Global API & Useful Runtime Objects ??
 - `window.ScreepsMinimalOverlay` (SMO): main state and sub-systems. Notable properties:
 	- `SMO.render()` ? entry point to re-render the overlay.
-	- `SMO.overlay` ? overlay management API (ensureOverlay, layoutCanvases, getCanvasForRoom).
+	- `SMO.overlay` ? overlay management API (ensureOverlay, layoutCanvases, getCanvasesForRoom, setOverlayVisible). Each room has a static + animated canvas pair; `SMO.renderAnimated()` repaints only the animated layer at ~30fps.
 	- `SMO.terrain` ? terrain cache and retrieval functions.
 	- `SMO.roomObjects` ? lazy room-objects fetcher with `ensureRoomsQueued`, structure lookups, and cache clearing helpers.
 	- `SMO.selfUser` ? `{ userId, lastDetectedAt }` describing the logged-in Screeps account as detected from the WebSocket feed.
