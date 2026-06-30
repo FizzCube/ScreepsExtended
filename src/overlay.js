@@ -23,21 +23,23 @@
 	//              and redrawn at ~30fps by renderAnimated(). It sits on top so it
 	//              composites over the static layer.
 	const overlayState = {
-		container: null,
+		clip: null,         // outer fixed wrapper; clips the nav strip, hosts container
+		container: null,    // transformed (matrix) element holding the canvases
 		rooms: new Map(),   // roomName -> { staticCanvas, animatedCanvas }
 	};
 
-	// The top nav bar (header.navbar) renders at z-index:auto inside top-content,
-	// which forms no stacking context. Our overlay - painted later in the root
-	// stacking context - would therefore cover the logo/credits/cpu bar. Giving
-	// the navbar a small positive z-index lifts it into the higher stacking step,
-	// above our (z-index:auto) overlay, while staying below the game's own chrome
-	// (sidenav z60, dropdowns z1000). Idempotent and cheap; re-applied each render
-	// so an Angular re-render can't silently drop it.
-	function ensureNavbarAboveOverlay() {
+	// Clip the overlay so it never paints into the top nav bar's strip. The game's
+	// own WebGL render area starts just below header.navbar (the navbar sits at the
+	// very top, the room canvas fills everything beneath it). We mirror that: clip
+	// away everything above the navbar's bottom edge. The navbar height is READ
+	// (never mutated) so this adapts to UI scale; no clip if it isn't present.
+	function updateTopClip() {
+		if (!overlayState.clip) return;
 		const navbar = document.querySelector("header.navbar");
-		if (navbar && navbar.style.zIndex !== "10") {
-			navbar.style.zIndex = "10";
+		const top = navbar ? Math.max(0, Math.round(navbar.getBoundingClientRect().bottom)) : 0;
+		const clipPath = top > 0 ? `inset(${top}px 0 0 0)` : "none";
+		if (overlayState.clip.style.clipPath !== clipPath) {
+			overlayState.clip.style.clipPath = clipPath;
 		}
 	}
 
@@ -45,9 +47,22 @@
 		const stageEl = document.querySelector(".pixijs-renderer__stage");
 		if (!stageEl) return null;
 
-		ensureNavbarAboveOverlay();
-
 		if (!overlayState.container) {
+			// Outer wrapper: a full-viewport fixed box that does two jobs. (1)
+			// `contain: paint` makes it the containing block for the fixed inner
+			// container AND clips it, so (2) a clip-path can hide the top nav strip
+			// in viewport space. Because the wrapper is at inset:0, the inner's
+			// origin stays at viewport 0,0 - the bridge's matrix math is unchanged.
+			// It is inserted BEFORE app2-router-outlet so the left sidebar (z-index
+			// 1000) still paints above us; the top bar stays clear via the clip, so
+			// we no longer need to touch Screeps' own DOM/z-index.
+			const clip = document.createElement("div");
+			clip.id = "smo-overlay-clip";
+			clip.style.position = "fixed";
+			clip.style.inset = "0";
+			clip.style.pointerEvents = "none";
+			clip.style.contain = "paint";
+
 			const div = document.createElement("div");
 			div.id = "smo-overlay";
 			div.style.position = "fixed";
@@ -63,20 +78,18 @@
 			// the stacked static + animated canvases don't double-fade where they
 			// overlap (e.g. a tower over its terrain tile).
 			div.style.opacity = "0.9";
-			// Z-ordering: the top nav (app-menu, z-index 1000) lives inside
-			// app2-router-outlet, a positioned sibling of the game container. A
-			// positioned/z-indexed overlay on <body> paints ABOVE that whole subtree
-			// (covering logo/credits/cpu bar). So we leave z-index auto and insert
-			// BEFORE the router-outlet: CSS stacking then puts us above the
-			// (non-positioned) game canvas but below the positioned nav.
+
+			clip.appendChild(div);
 			const routerOutlet = document.querySelector("app2-router-outlet");
 			if (routerOutlet && routerOutlet.parentElement === document.body) {
-				document.body.insertBefore(div, routerOutlet);
+				document.body.insertBefore(clip, routerOutlet);
 			} else {
-				document.body.appendChild(div);
+				document.body.appendChild(clip);
 			}
+			overlayState.clip = clip;
 			overlayState.container = div;
 		}
+		updateTopClip();
 		return overlayState;
 	}
 
