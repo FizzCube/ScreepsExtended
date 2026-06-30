@@ -25,6 +25,15 @@
     const ANIMATED_TYPES = new Set(["tower"]);
     const RAMPART_LAYER_CACHE = Object.create(null);
     const imageCache = Object.create(null);
+    // Ownership outline colours: green when the structure is ours, red otherwise.
+    const OWN_COLOR = "#82ca82";
+    const HOSTILE_COLOR = "#ff8989";
+    // Recoloured SVG art. The Screeps border/body SVGs draw their rim as
+    // `stroke:#ffffff`; we fetch the markup once, swap that stroke for the owner
+    // colour, and cache the resulting data-URL image keyed by url + colour.
+    const svgTextCache = Object.create(null);   // url -> string | null (null = failed)
+    const svgTextPending = Object.create(null); // url -> bool
+    const tintedImageCache = Object.create(null); // `${url}|${color}` -> Image
     const ASSETS = {
         towerBase: "https://screeps.com/a/vendor/renderer/metadata/tower-base.svg",
         towerTop: "https://screeps.com/a/vendor/renderer/metadata/tower-rotatable.svg",
@@ -66,6 +75,69 @@
         return SMO.userCache.getUsernameById(String(userId));
     }
 
+    let rerenderQueued = false;
+    function requestRerender() {
+        if (rerenderQueued) return;
+        rerenderQueued = true;
+        const run = () => {
+            rerenderQueued = false;
+            if (SMO && typeof SMO.render === "function") SMO.render();
+        };
+        if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(run);
+        } else {
+            run();
+        }
+    }
+
+    function ensureSvgText(url) {
+        if (url in svgTextCache) return svgTextCache[url]; // string or null
+        if (!svgTextPending[url]) {
+            svgTextPending[url] = true;
+            fetch(url)
+                .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+                .then((text) => { svgTextCache[url] = text; requestRerender(); })
+                .catch(() => { svgTextCache[url] = null; })
+                .then(() => { svgTextPending[url] = false; });
+        }
+        return null;
+    }
+
+    // The Screeps border art draws its rim as a white-ish stroke, in two markup
+    // forms: `style="...stroke:#ffffff..."` and `stroke="#fdffff"`. Swap whichever
+    // appears for the owner colour, leaving stroke-width / stroke-opacity / etc.
+    // and any non-white strokes untouched.
+    function recolorWhiteStroke(text, color) {
+        return text.replace(/(stroke\s*[:=]\s*["']?)#(?:ffffff|fdffff|fefefe)/gi, `$1${color}`);
+    }
+
+    function getStrokeColoredImage(url, color) {
+        if (!url || !color) return null;
+        const cacheKey = `${url}|${color}`;
+        if (tintedImageCache[cacheKey]) return tintedImageCache[cacheKey];
+        const text = ensureSvgText(url);
+        if (text == null) return null; // still loading, or failed to load
+        const recolored = recolorWhiteStroke(text, color);
+        const img = new Image();
+        img.onload = requestRerender;
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(recolored)}`;
+        tintedImageCache[cacheKey] = img;
+        return img;
+    }
+
+    function isOwnEntry(entry) {
+        if (!entry || !entry.user) return false;
+        const selfId = SMO.selfUser && SMO.selfUser.userId ? String(SMO.selfUser.userId) : null;
+        return selfId ? String(entry.user) === selfId : false;
+    }
+
+    // Owner outline colour for an SVG rim, or null when the structure is unowned
+    // (leave the original white art untouched).
+    function ownerStrokeColor(entry) {
+        if (!entry || !entry.user) return null;
+        return isOwnEntry(entry) ? OWN_COLOR : HOSTILE_COLOR;
+    }
+
     function getImage(url) {
         if (!url) return null;
         if (!imageCache[url]) {
@@ -81,7 +153,14 @@
     }
 
     function drawImageLayer(ctx, url, x, y, scaleX, scaleY, options = {}) {
-        const img = getImage(url);
+        let img;
+        if (options.strokeColor) {
+            img = getStrokeColoredImage(url, options.strokeColor);
+            // Fall back to the plain white art while the recoloured version loads.
+            if (!isImageReady(img)) img = getImage(url);
+        } else {
+            img = getImage(url);
+        }
         if (!isImageReady(img)) return;
         const width = (options.scaleX || options.scale || 1) * scaleX;
         const height = (options.scaleY || options.scale || 1) * scaleY;
@@ -108,13 +187,13 @@
 
         ctx.save();
         ctx.fillStyle = "rgba(255, 230, 120, 1)";
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+        ctx.strokeStyle = ownerStrokeColor(entry) || "rgba(255, 255, 255, 0.7)";
         ctx.lineWidth = Math.max(1.5, radius * 1.1);
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        
+
         ctx.lineWidth = Math.max(1.5, radius * 0.65);
         ctx.strokeStyle = "rgba(0, 0, 0, 0.95)";
         ctx.beginPath();
@@ -139,36 +218,47 @@
         ctx.fill();
         ctx.stroke();
         ctx.restore();
+
+        // Extensions keep the simple faded ownership ring.
+        if (entry && entry.user) {
+            drawOwnershipOutline(ctx, entry, scaleX, scaleY, isOwnEntry(entry));
+        }
     }
 
     function drawTower(ctx, entry, scaleX, scaleY, now) {
         const rotation = ((now % 5000) / 5000) * Math.PI * 2;
-        drawImageLayer(ctx, ASSETS.towerBase, entry.x, entry.y, scaleX, scaleY, { scaleX: 1.5, scaleY: 1.5 });
+        const strokeColor = ownerStrokeColor(entry);
+        drawImageLayer(ctx, ASSETS.towerBase, entry.x, entry.y, scaleX, scaleY, { scaleX: 1.5, scaleY: 1.5, strokeColor });
         drawImageLayer(ctx, ASSETS.towerTop, entry.x, entry.y, scaleX, scaleY, { rotation });
     }
 
     function drawLink(ctx, entry, scaleX, scaleY) {
-        drawImageLayer(ctx, ASSETS.linkBorder, entry.x, entry.y, scaleX, scaleY, { scaleX: 0.8, scaleY: 0.8 });
+        const strokeColor = ownerStrokeColor(entry);
+        drawImageLayer(ctx, ASSETS.linkBorder, entry.x, entry.y, scaleX, scaleY, { scaleX: 0.8, scaleY: 0.8, strokeColor });
         drawImageLayer(ctx, ASSETS.linkEnergy, entry.x, entry.y, scaleX, scaleY, { scaleX: 0.65, scaleY: 0.65 });
     }
 
     function drawNuker(ctx, entry, scaleX, scaleY) {
-        drawImageLayer(ctx, ASSETS.nukerBorder, entry.x, entry.y, scaleX, scaleY, {scaleX: 2.5, scaleY: 2.5});
+        const strokeColor = ownerStrokeColor(entry);
+        drawImageLayer(ctx, ASSETS.nukerBorder, entry.x, entry.y, scaleX, scaleY, { scaleX: 2.5, scaleY: 2.5, strokeColor });
         drawImageLayer(ctx, ASSETS.nukerFill, entry.x, entry.y, scaleX, scaleY, { scaleX: 2.5, scaleY: 2.5 });
     }
 
     function drawLab(ctx, entry, scaleX, scaleY) {
-        drawImageLayer(ctx, ASSETS.labBase, entry.x, entry.y, scaleX, scaleY, { scaleX: 1.8, scaleY: 1.8 });
+        const strokeColor = ownerStrokeColor(entry);
+        drawImageLayer(ctx, ASSETS.labBase, entry.x, entry.y, scaleX, scaleY, { scaleX: 1.8, scaleY: 1.8, strokeColor });
         drawImageLayer(ctx, ASSETS.labHighlight, entry.x, entry.y, scaleX, scaleY, { alpha: 0.5, scaleX: 1.3, scaleY: 1.3 });
     }
 
     function drawStorage(ctx, entry, scaleX, scaleY) {
-        drawImageLayer(ctx, ASSETS.storageBorder, entry.x, entry.y, scaleX, scaleY,{scaleX: 1.5, scaleY: 1.5});
-        drawImageLayer(ctx, ASSETS.storageFill, entry.x, entry.y, scaleX, scaleY, {scaleX: 1.5, scaleY: 1.5});
+        const strokeColor = ownerStrokeColor(entry);
+        drawImageLayer(ctx, ASSETS.storageBorder, entry.x, entry.y, scaleX, scaleY, { scaleX: 1.5, scaleY: 1.5, strokeColor });
+        drawImageLayer(ctx, ASSETS.storageFill, entry.x, entry.y, scaleX, scaleY, { scaleX: 1.5, scaleY: 1.5 });
     }
 
     function drawFactory(ctx, entry, scaleX, scaleY) {
-        drawImageLayer(ctx, ASSETS.factoryBorder, entry.x, entry.y, scaleX, scaleY);
+        const strokeColor = ownerStrokeColor(entry);
+        drawImageLayer(ctx, ASSETS.factoryBorder, entry.x, entry.y, scaleX, scaleY, { strokeColor });
         drawImageLayer(ctx, ASSETS.factoryBase, entry.x, entry.y, scaleX, scaleY);
         drawImageLayer(ctx, ASSETS.factoryHighlight, entry.x, entry.y, scaleX, scaleY, { alpha: 0.85 });
     }
@@ -189,7 +279,8 @@
         ctx.fill();
         ctx.restore();
 
-        drawImageLayer(ctx, ASSETS.terminalBorder, x, y, scaleX, scaleY, { scaleX: 1.55, scaleY: 1.55 });
+        const strokeColor = ownerStrokeColor(entry);
+        drawImageLayer(ctx, ASSETS.terminalBorder, x, y, scaleX, scaleY, { scaleX: 1.55, scaleY: 1.55, strokeColor });
         drawImageLayer(ctx, ASSETS.terminalHighlight, x, y, scaleX, scaleY, { scaleX: 1.55, scaleY: 1.55, alpha: 0.85 });
     }
 
@@ -207,6 +298,16 @@
         ctx.beginPath();
         ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        // PowerSpawn has no white rim - show ownership as a coloured outer ring.
+        const ownColor = ownerStrokeColor(entry);
+        if (ownColor) {
+            ctx.strokeStyle = ownColor;
+            ctx.lineWidth = Math.max(1.5, outerRadius * 0.18);
+            ctx.beginPath();
+            ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
 
         ctx.strokeStyle = "rgba(200, 0, 0, 0.95)";
         ctx.lineWidth = Math.max(2, outerRadius * 0.35);
@@ -256,6 +357,16 @@
         ctx.beginPath();
         ctx.arc(cx + offset * 0.6, cy - offset * 0.7, lensRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Observer has no white rim - show ownership as a coloured outer ring.
+        const ownColor = ownerStrokeColor(entry);
+        if (ownColor) {
+            ctx.strokeStyle = ownColor;
+            ctx.lineWidth = Math.max(1.5, baseRadius * 0.2);
+            ctx.beginPath();
+            ctx.arc(cx, cy, baseRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
         ctx.restore();
     }
 
@@ -275,8 +386,11 @@
 
         ctx.save();
         ctx.fillStyle = style.fill || "rgba(255, 255, 255, 0.9)";
-        if (style.outline) {
-            ctx.strokeStyle = style.outline;
+        // Owned fallback structures get an owner-coloured outline; otherwise use
+        // the style's own outline (if any).
+        const outlineColor = ownerStrokeColor(entry) || style.outline;
+        if (outlineColor) {
+            ctx.strokeStyle = outlineColor;
             ctx.lineWidth = Math.max(1, radius * 0.25);
         }
         if (style.shadow) {
@@ -301,7 +415,7 @@
         }
 
         ctx.fill();
-        if (style.outline) {
+        if (outlineColor) {
             ctx.stroke();
         }
         ctx.restore();
@@ -544,13 +658,11 @@
             entries.forEach((entry) => {
                 if (!entry || typeof entry.x !== "number" || typeof entry.y !== "number") return;
                 if (renderer) {
+                    // Each renderer applies its own ownership colouring (see
+                    // ownerStrokeColor / the per-structure draw functions).
                     renderer(ctx, entry, scaleX, scaleY, now);
                 } else if (fallbackStyle) {
                     drawDefaultStructure(ctx, entry, fallbackStyle, scaleX, scaleY);
-                }
-                if (entry && entry.user) {
-                    const isOwn = selfId ? String(entry.user) === selfId : false;
-                    drawOwnershipOutline(ctx, entry, scaleX, scaleY, isOwn);
                 }
             });
         });

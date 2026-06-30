@@ -44,7 +44,7 @@
                 ctx.lineWidth = Math.max(1, radius * 0.3);
             }
             const half = radius;
-            const cornerRadius = radius * 0.65;
+            const cornerRadius = radius * 0.45;
             ctx.beginPath();
             ctx.roundRect(cx - half, cy - half, half * 2, half * 2, cornerRadius);
             if (style.outline) {
