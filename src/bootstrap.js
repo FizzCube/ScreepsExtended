@@ -11,7 +11,7 @@
     SMO.roomRadarData = Object.create(null);
     // Central configuration and debug toggle
     SMO.config = SMO.config || {};
-    SMO.config.debug = SMO.config.debug || true;
+    SMO.config.debug = SMO.config.debug || false;
 
     /**
      * Set the debug toggle for content-script logging and the injected page hooks.
@@ -35,11 +35,13 @@
         }
     };
 
+    // We must inject the hooks into the page context so they can access window.angular / window.Screeps
     const hookScripts = [
         "hooks/hook-utils.js",
         "hooks/hook-roommap.js",
         "hooks/hook-user-directory.js",
-        "hooks/hook-roomview.js"
+        "hooks/hook-roomview.js",
+        "src/pixi-bridge.js"
     ];
 
     function injectHook(path) {

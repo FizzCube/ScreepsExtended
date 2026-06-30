@@ -51,12 +51,15 @@
             }
         }, false);
 
-        setTimeout(() => {
+        function animationLoop() {
             SMO.overlay.ensureOverlay();
             if (typeof SMO.render === "function") {
                 SMO.render();
             }
-        }, 1000);
+            requestAnimationFrame(animationLoop);
+        }
+
+        requestAnimationFrame(animationLoop);
     }
 
     watchRoomAndStage();

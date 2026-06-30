@@ -162,7 +162,15 @@
      */
     function render() {
         const roomInfo = SMO.rooms.detectCurrentRoomFromHash();
-        if (!roomInfo) return;
+        if (!roomInfo) {
+            // Not on a room screen (market, world map, profile, etc.) - hide the
+            // leftover render so it doesn't sit on top of the other page.
+            SMO.overlay.setOverlayVisible(false);
+            return;
+        }
+
+        // Back on a room screen - make sure the overlay is visible again.
+        SMO.overlay.setOverlayVisible(true);
 
         SMO.currentRoomState = roomInfo;
         const { shard, roomName } = roomInfo;
