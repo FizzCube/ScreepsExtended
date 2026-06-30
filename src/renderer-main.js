@@ -17,6 +17,7 @@
     const { drawMinerals } = window.ScreepsMineralRenderer;
     const { drawControllers } = window.ScreepsControllerRenderer;
     const { drawNPCs } = window.ScreepsNPCRenderer;
+    const { drawKeeperLairBase, drawKeeperLairPulse } = window.ScreepsKeeperRenderer;
     const { drawCreeps } = window.ScreepsCreepRenderer;
     const { drawSolidStructures } = window.ScreepsStructureRenderer;
 
@@ -73,7 +74,7 @@
             drawPlayerWalls(ctx, data.w, scaleX, scaleY);  // walls with connections
             drawSources(ctx, data.s, scaleX, scaleY);  // sources with yellow glow
             drawMinerals(ctx, data.m, scaleX, scaleY, roomName);  // minerals / deposits
-            drawPoints(ctx, data.k, "k", scaleX, scaleY);  // keeper lairs
+            drawKeeperLairBase(ctx, data.k, scaleX, scaleY);  // keeper lairs (static black base)
             drawPowerBanks(ctx, data.pb, scaleX, scaleY); // power banks with enhanced rendering
             drawPoints(ctx, data.p, "p", scaleX, scaleY);   // portals
             
@@ -222,6 +223,14 @@
         const solidStructures = roomObjectCache ? roomObjectCache.getSolidStructures(shard, roomName) : null;
         if (solidStructures) {
             drawSolidStructures(ctx, solidStructures, scaleX, scaleY, { layer: "animated" });
+        }
+
+        // Pulsing red ring over the static black keeper-lair base.
+        const shardData = SMO.roomRadarData[shard];
+        const roomEntry = shardData && shardData[roomName];
+        const data = roomEntry ? roomEntry.raw || {} : null;
+        if (data && data.k) {
+            drawKeeperLairPulse(ctx, data.k, scaleX, scaleY, performance.now());
         }
     }
 
